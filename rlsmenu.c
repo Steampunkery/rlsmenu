@@ -21,8 +21,8 @@
 #define BOX_TR L'\u2510'
 #define BOX_BR L'\u2518'
 
-static void init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame);
-static void init_rlsmenu_list(rlsmenu_frame *);
+static rlsmenu_frame *init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame);
+static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *);
 
 static void rebuild_menu_str(rlsmenu_gui *gui);
 static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *);
@@ -30,7 +30,7 @@ static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *);
 static int longest_item_name(wchar_t **item_names, int n_items);
 static void draw_border(wchar_t *, int w, int h);
 
-void (*menu_init_handler_for[])(rlsmenu_frame *) = {
+rlsmenu_frame *(*menu_init_handler_for[])(rlsmenu_frame *) = {
     [RLSMENU_LIST] = init_rlsmenu_list,
 };
 
@@ -50,10 +50,12 @@ typedef struct rlsmenu_gui {
     node *frame_stack;
     node *return_stack;
 
+    // cached string of the top menu frame
     wchar_t *top_menu;
     bool should_rebuild_menu_str;
 } rlsmenu_gui;
 
+// Takes ownership of data
 static void push(node **head, void *data) {
     node *n = malloc(sizeof(*n));
     n->data = data;
@@ -61,6 +63,7 @@ static void push(node **head, void *data) {
     *head = n;
 }
 
+// Caller is in charge of returned memory
 static node *pop(node **head) {
     if (!*head) return NULL;
 
@@ -75,23 +78,29 @@ void rlsmenu_gui_init(rlsmenu_gui *gui) {
     gui->frame_stack = NULL;
     gui->return_stack = NULL;
     gui->top_menu = NULL;
+    gui->should_rebuild_menu_str = false;
 }
 
+// Init frame will copy the data so we don't change the user's template
 void rlsmenu_gui_push(rlsmenu_gui *gui, rlsmenu_frame *frame) {
-    init_frame(gui, frame);
+    frame = init_frame(gui, frame);
 
     push(&gui->frame_stack, frame);
 }
 
-static void init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame) {
+// Returns the copied frame
+static rlsmenu_frame *init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame) {
     frame->parent = gui;
     gui->should_rebuild_menu_str = true;
 
-    menu_init_handler_for[frame->type](frame);
+    return menu_init_handler_for[frame->type](frame);
 }
 
-static void init_rlsmenu_list(rlsmenu_frame *frame) {
-    rlsmenu_list *list = (rlsmenu_list *) frame;
+// Copies and initializes the frame
+static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *frame) {
+    rlsmenu_list *list = malloc(sizeof(*list));
+    *list = *(rlsmenu_list *) frame;
+    frame = (rlsmenu_frame *) list;
 
     list->item_names = list->get_item_names(list->items, list->n_items, frame->state);
 
@@ -102,6 +111,8 @@ static void init_rlsmenu_list(rlsmenu_frame *frame) {
     int title_len = frame->title ? wcslen(frame->title) : 0;
     frame->w = max(longest_item_name(list->item_names, list->n_items) + MENU_IDX_WIDTH, title_len) + x_border;
     frame->h = list->n_items + !!frame->title + y_border;
+
+    return frame;
 }
 
 static int longest_item_name(wchar_t **item_names, int n_items) {
@@ -113,6 +124,7 @@ static int longest_item_name(wchar_t **item_names, int n_items) {
     return max;
 }
 
+// Will return NULL if called before pushing a frame
 wchar_t *rlsmenu_get_menu_str(rlsmenu_gui *gui) {
     if (gui->should_rebuild_menu_str)
         rebuild_menu_str(gui);
@@ -191,7 +203,7 @@ int main() {
     (void) pop;
     setlocale(LC_ALL, "C.UTF-8");
 
-    rlsmenu_list list = {
+    rlsmenu_list list_tmp = {
         .frame = {
             .type = RLSMENU_LIST,
             .flags = RLSMENU_BORDER,
@@ -209,8 +221,8 @@ int main() {
     struct timespec begin, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
 
-    init_rlsmenu_list((rlsmenu_frame *) &list);
-    wchar_t *win = rebuild_rlsmenu_list((rlsmenu_frame *) &list);
+    rlsmenu_list *list = (rlsmenu_list *) init_rlsmenu_list((rlsmenu_frame *) &list_tmp);
+    wchar_t *win = rebuild_rlsmenu_list((rlsmenu_frame *) list);
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     double time_spent = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
@@ -218,11 +230,12 @@ int main() {
 
     wprintf(L"Time to compute menu: %lf\n", time_spent);
 
-    for (int i = 0; i < list.frame.w * list.frame.h; i++) {
-        if (i && i % list.frame.w == 0) wprintf(L"\n");
+    for (int i = 0; i < list->frame.w * list->frame.h; i++) {
+        if (i && i % list->frame.w == 0) wprintf(L"\n");
         wprintf(L"%lc", win[i]);
     }
 
     wprintf(L"\n");
+    free(list);
     free(win);
 }
