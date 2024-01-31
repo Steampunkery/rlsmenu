@@ -27,6 +27,8 @@ static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *);
 static void rebuild_menu_str(rlsmenu_gui *gui);
 static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *);
 
+static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in);
+
 static int longest_item_name(wchar_t **item_names, int n_items);
 static void draw_border(wchar_t *, int w, int h);
 
@@ -36,6 +38,10 @@ rlsmenu_frame *(*menu_init_handler_for[])(rlsmenu_frame *) = {
 
 wchar_t *(*rebuild_handler_for[])(rlsmenu_frame *) = {
     [RLSMENU_LIST] = rebuild_rlsmenu_list,
+};
+
+enum rlsmenu_result (*update_handler_for[])(rlsmenu_frame *, enum rlsmenu_input) = {
+    [RLSMENU_LIST] = update_rlsmenu_list,
 };
 
 static wchar_t *idx_to_alpha = L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -72,6 +78,33 @@ static node *pop(node **head) {
     tmp->next = NULL;
 
     return tmp;
+}
+
+enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
+    rlsmenu_frame *frame = gui->frame_stack->data;
+
+    enum rlsmenu_result res = update_handler_for[frame->type](frame, in);
+    if (res == RLSMENU_DONE) {
+        // Client has to handle return stack
+        // TODO: Make functions to interact with the return stack
+        node *n = pop(&gui->frame_stack);
+        free(n->data);
+        free(n);
+        gui->should_rebuild_menu_str = true;
+    }
+
+    return res;
+}
+
+static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in) {
+    (void) frame;
+    switch (in) {
+        case RLSMENU_ESC:
+        case RLSMENU_SEL:
+            return RLSMENU_DONE;
+        default:
+            return RLSMENU_CONT;
+    }
 }
 
 void rlsmenu_gui_init(rlsmenu_gui *gui) {

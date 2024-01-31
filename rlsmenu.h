@@ -5,8 +5,18 @@
 #define RLSMENU_BORDER (1 << RLSMENU_BORDER_SHIFT)
 
 enum rlsmenu_type { RLSMENU_LIST };
+enum rlsmenu_result { RLSMENU_CONT, RLSMENU_DONE };
 
 typedef struct rlsmenu_gui rlsmenu_gui;
+// 0-51 are reserved for inputs a - Z
+enum rlsmenu_input {
+    RLSMENU_ESC = 52,
+    RLSMENU_PGUP,
+    RLSMENU_PGDN,
+    RLSMENU_UP,
+    RLSMENU_DN,
+    RLSMENU_SEL
+};
 
 typedef struct rlsmenu_frame {
     enum rlsmenu_type type;

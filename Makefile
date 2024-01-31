@@ -3,7 +3,7 @@
 # TDIR=test
 CC=gcc
 # CFLAGS=-I$(IDIR) -Wall
-CFLAGS=-Wall -Werror -Wextra -g3 -fsanitize=undefined -fno-sanitize-recover
+CFLAGS=-Wall -Werror -Wno-unused-function -Wextra -g3 -fsanitize=undefined -fno-sanitize-recover
 
 default: rlsmenu.o
 
