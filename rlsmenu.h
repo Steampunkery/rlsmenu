@@ -1,5 +1,6 @@
 #pragma once
 #include <wchar.h>
+#include <stdbool.h>
 
 #define RLSMENU_BORDER_SHIFT 0
 #define RLSMENU_BORDER (1 << RLSMENU_BORDER_SHIFT)
@@ -7,7 +8,6 @@
 enum rlsmenu_type { RLSMENU_LIST };
 enum rlsmenu_result { RLSMENU_CONT, RLSMENU_DONE };
 
-typedef struct rlsmenu_gui rlsmenu_gui;
 // 0-51 are reserved for inputs a - Z
 enum rlsmenu_input {
     RLSMENU_ESC = 52,
@@ -17,6 +17,15 @@ enum rlsmenu_input {
     RLSMENU_DN,
     RLSMENU_SEL
 };
+
+typedef struct rlsmenu_gui {
+    struct node *frame_stack;
+    struct node *return_stack;
+
+    // cached string of the top menu frame
+    wchar_t *top_menu;
+    bool should_rebuild_menu_str;
+} rlsmenu_gui;
 
 typedef struct rlsmenu_frame {
     enum rlsmenu_type type;

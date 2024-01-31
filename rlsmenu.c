@@ -52,15 +52,6 @@ struct node {
     void *data;
 };
 
-typedef struct rlsmenu_gui {
-    node *frame_stack;
-    node *return_stack;
-
-    // cached string of the top menu frame
-    wchar_t *top_menu;
-    bool should_rebuild_menu_str;
-} rlsmenu_gui;
-
 // Takes ownership of data
 static void push(node **head, void *data) {
     node *n = malloc(sizeof(*n));
