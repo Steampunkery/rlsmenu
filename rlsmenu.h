@@ -52,7 +52,14 @@ typedef struct rlsmenu_list {
     wchar_t **(*get_item_names)(void *items, int n_items, void *state);
 } rlsmenu_list;
 
+typedef struct rlsmenu_str {
+    int w;
+    int h;
+    wchar_t *str;
+} rlsmenu_str;
+
 enum rlsmenu_result rlsmenu_update(rlsmenu_gui *, enum rlsmenu_input);
 void rlsmenu_gui_init(rlsmenu_gui *);
 void rlsmenu_gui_deinit(rlsmenu_gui *gui);
 void rlsmenu_gui_push(rlsmenu_gui *, rlsmenu_frame *);
+rlsmenu_str rlsmenu_get_menu_str(rlsmenu_gui *);

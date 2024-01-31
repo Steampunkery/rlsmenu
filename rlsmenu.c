@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include <locale.h>
-#include <time.h>
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -153,11 +151,16 @@ static int longest_item_name(wchar_t **item_names, int n_items) {
 }
 
 // Will return NULL if called before pushing a frame
-wchar_t *rlsmenu_get_menu_str(rlsmenu_gui *gui) {
+rlsmenu_str rlsmenu_get_menu_str(rlsmenu_gui *gui) {
     if (gui->should_rebuild_menu_str)
         rebuild_menu_str(gui);
 
-    return gui->top_menu;
+    rlsmenu_frame *frame = gui->frame_stack->data;
+    return (rlsmenu_str) {
+        .w = frame->w,
+        .h = frame->h,
+        .str = gui->top_menu
+    };
 }
 
 static void rebuild_menu_str(rlsmenu_gui *gui) {
@@ -219,51 +222,3 @@ static void draw_border(wchar_t *str, int w, int h) {
 
 }
 
-wchar_t **f_item_names(void *items, int n_items, void *state) {
-    (void) items;
-    (void) n_items;
-    (void) state;
-    static wchar_t *names[] = {L"One", L"Two", L"Three"};
-    return names;
-}
-
-int main() {
-    (void) pop;
-    setlocale(LC_ALL, "C.UTF-8");
-
-    rlsmenu_list list_tmp = {
-        .frame = {
-            .type = RLSMENU_LIST,
-            .flags = RLSMENU_BORDER,
-            .title = L"Test",
-            .state = NULL,
-        },
-        .cbs = { NULL, NULL },
-        .items = NULL,
-        .n_items = 3,
-
-        .item_names = NULL,
-        .get_item_names = f_item_names,
-    };
-
-    struct timespec begin, end;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
-
-    rlsmenu_list *list = (rlsmenu_list *) init_rlsmenu_list((rlsmenu_frame *) &list_tmp);
-    wchar_t *win = rebuild_rlsmenu_list((rlsmenu_frame *) list);
-
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    double time_spent = (end.tv_nsec - begin.tv_nsec) / 1000000000.0 +
-        (end.tv_sec  - begin.tv_sec);
-
-    wprintf(L"Time to compute menu: %lf\n", time_spent);
-
-    for (int i = 0; i < list->frame.w * list->frame.h; i++) {
-        if (i && i % list->frame.w == 0) wprintf(L"\n");
-        wprintf(L"%lc", win[i]);
-    }
-
-    wprintf(L"\n");
-    free(list);
-    free(win);
-}
