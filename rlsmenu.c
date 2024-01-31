@@ -105,6 +105,10 @@ void rlsmenu_gui_init(rlsmenu_gui *gui) {
     gui->should_rebuild_menu_str = false;
 }
 
+void rlsmenu_gui_deinit(rlsmenu_gui *gui) {
+    free(gui->top_menu);
+}
+
 // Init frame will copy the data so we don't change the user's template
 void rlsmenu_gui_push(rlsmenu_gui *gui, rlsmenu_frame *frame) {
     frame = init_frame(gui, frame);
