@@ -86,10 +86,12 @@ enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
 }
 
 static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in) {
-    (void) frame;
+    rlsmenu_list *list = (rlsmenu_list *) frame;
+
     switch (in) {
         case RLSMENU_ESC:
         case RLSMENU_SEL:
+            if (list->cbs && list->cbs->on_complete) list->cbs->on_complete(frame);
             return RLSMENU_DONE;
         default:
             return RLSMENU_CONT;

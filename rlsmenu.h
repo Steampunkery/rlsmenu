@@ -37,14 +37,17 @@ typedef struct rlsmenu_frame {
     int w, h;
 } rlsmenu_frame;
 
+// TODO: See if this enum is really necessary in the future. It's in the
+// spec but might be redundant
+enum rlsmenu_cb_res { RLSMENU_CB_DONE, RLSMENU_CB_NEW_WIN };
 typedef struct rlsmenu_cbs {
-    enum rlsmenu_cb_res (*on_select)(void *selection, rlsmenu_frame *frame);
+    enum rlsmenu_cb_res (*on_select)(rlsmenu_frame *frame, void *selection);
     enum rlsmenu_cb_res (*on_complete)(rlsmenu_frame *frame);
 } rlsmenu_cbs;
 
 typedef struct rlsmenu_list {
     rlsmenu_frame frame;
-    rlsmenu_cbs cbs;
+    rlsmenu_cbs *cbs;
     void *items;
     int n_items;
 

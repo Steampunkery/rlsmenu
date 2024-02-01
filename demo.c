@@ -31,6 +31,12 @@ int translate_input(char c) {
     }
 }
 
+enum rlsmenu_cb_res on_complete(rlsmenu_frame *frame) {
+    (void) frame;
+    wprintf(L"\nPrinted from on_complete!");
+    return RLSMENU_CB_DONE;
+}
+
 rlsmenu_list list_tmp = {
     .frame = {
         .type = RLSMENU_LIST,
@@ -38,7 +44,7 @@ rlsmenu_list list_tmp = {
         .title = L"Test",
         .state = NULL,
     },
-    .cbs = { NULL, NULL },
+    .cbs = &(rlsmenu_cbs) { NULL, on_complete },
     .items = NULL,
     .n_items = 3,
 
