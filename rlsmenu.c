@@ -154,6 +154,9 @@ static int longest_item_name(wchar_t **item_names, int n_items) {
 
 // Will return NULL if called before pushing a frame
 rlsmenu_str rlsmenu_get_menu_str(rlsmenu_gui *gui) {
+    if (!gui->frame_stack)
+        return (rlsmenu_str) { .str = NULL };
+
     if (gui->should_rebuild_menu_str)
         rebuild_menu_str(gui);
 

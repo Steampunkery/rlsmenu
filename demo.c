@@ -85,8 +85,9 @@ int main() {
 
         if ((res = rlsmenu_update(&gui, in)) == RLSMENU_DONE) break;
 
-        wprintf(L"\e[1;1H");
         menu_str = rlsmenu_get_menu_str(&gui);
+        if (!menu_str.str) break;
+        wprintf(L"\e[1;1H");
         draw_menu(menu_str);
     }
 
