@@ -8,6 +8,10 @@
 
 #define ENTER 0xa
 #define ESC   0x1b
+#define UP    0x2d
+#define DN    0x2b
+#define PGUP  0x2a
+#define PGDN  0x2f
 
 wchar_t **f_item_names(void *items, int n_items, void *state) {
     (void) items;
@@ -26,30 +30,46 @@ int translate_input(char c) {
             return RLSMENU_SEL;
         case ESC:
             return RLSMENU_ESC;
+        case UP:
+            return RLSMENU_UP;
+        case DN:
+            return RLSMENU_DN;
+        case PGUP:
+            return RLSMENU_PGUP;
+        case PGDN:
+            return RLSMENU_PGDN;
         default:
             return -1;
     }
 }
 
-enum rlsmenu_cb_res on_complete(rlsmenu_frame *frame) {
+void on_complete(rlsmenu_frame *frame) {
     (void) frame;
     wprintf(L"\nPrinted from on_complete!");
-    return RLSMENU_CB_DONE;
 }
 
-rlsmenu_list list_tmp = {
-    .frame = {
-        .type = RLSMENU_LIST,
-        .flags = RLSMENU_BORDER,
-        .title = L"Test",
-        .state = NULL,
-    },
-    .cbs = &(rlsmenu_cbs) { NULL, on_complete },
-    .items = NULL,
-    .n_items = 3,
+enum rlsmenu_cb_res on_select(rlsmenu_frame *frame, void *selection) {
+    rlsmenu_push_return(frame->parent, selection);
 
-    .item_names = NULL,
-    .get_item_names = f_item_names,
+    return RLSMENU_CB_SUCCESS;
+}
+
+char *items[] = { "a", "b", "c" };
+rlsmenu_slist list_tmp = {
+    .s = {
+        .frame = {
+            .type = RLSMENU_SLIST,
+            .flags = RLSMENU_BORDER,
+            .title = L"Test",
+            .state = NULL,
+        },
+        .cbs = &(rlsmenu_cbs) { on_select, on_complete },
+        .items = items,
+        .item_size = sizeof(char *),
+        .n_items = 3,
+
+        .get_item_names = f_item_names,
+    },
 };
 
 void draw_menu(rlsmenu_str menu_str) {
@@ -91,8 +111,13 @@ int main() {
         draw_menu(menu_str);
     }
 
-    wprintf(L"\n");
-    wprintf(L"\e[?25h");
+    wprintf(L"\n\e[?25h");
+
+    char **result = rlsmenu_pop_return(&gui);
+    if (result)
+        wprintf(L"Selection is: %s\n", *result);
+    else
+        wprintf(L"Cancelled\n");
 
     rlsmenu_gui_deinit(&gui);
     tcsetattr(STDIN_FILENO, TCSANOW, &old);

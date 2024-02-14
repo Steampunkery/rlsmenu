@@ -10,6 +10,11 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 #define MENU_IDX_WIDTH 4
 
 #define BOX_H L'\u2500'
@@ -21,25 +26,30 @@
 
 static rlsmenu_frame *init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame);
 static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *);
+static rlsmenu_frame *init_rlsmenu_slist(rlsmenu_frame *);
 
 static void rebuild_menu_str(rlsmenu_gui *gui);
 static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *);
 
 static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in);
+static enum rlsmenu_result update_rlsmenu_slist(rlsmenu_frame *frame, enum rlsmenu_input in);
 
 static int longest_item_name(wchar_t **item_names, int n_items);
 static void draw_border(wchar_t *, int w, int h);
 
 rlsmenu_frame *(*menu_init_handler_for[])(rlsmenu_frame *) = {
     [RLSMENU_LIST] = init_rlsmenu_list,
+    [RLSMENU_SLIST] = init_rlsmenu_slist,
 };
 
 wchar_t *(*rebuild_handler_for[])(rlsmenu_frame *) = {
     [RLSMENU_LIST] = rebuild_rlsmenu_list,
+    [RLSMENU_SLIST] = rebuild_rlsmenu_list,
 };
 
 enum rlsmenu_result (*update_handler_for[])(rlsmenu_frame *, enum rlsmenu_input) = {
     [RLSMENU_LIST] = update_rlsmenu_list,
+    [RLSMENU_SLIST] = update_rlsmenu_slist,
 };
 
 static wchar_t *idx_to_alpha = L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -73,13 +83,13 @@ enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
     rlsmenu_frame *frame = gui->frame_stack->data;
 
     enum rlsmenu_result res = update_handler_for[frame->type](frame, in);
-    if (res == RLSMENU_DONE) {
+    if (res == RLSMENU_DONE || res == RLSMENU_CANCELED) {
         // Client has to handle return stack
-        // TODO: Make functions to interact with the return stack
         node *n = pop(&gui->frame_stack);
         free(n->data);
         free(n);
         gui->should_rebuild_menu_str = true;
+        gui->last_return_code = res;
     }
 
     return res;
@@ -91,8 +101,77 @@ static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmen
     switch (in) {
         case RLSMENU_ESC:
         case RLSMENU_SEL:
-            if (list->cbs && list->cbs->on_complete) list->cbs->on_complete(frame);
+            if (list->s.cbs && list->s.cbs->on_complete) list->s.cbs->on_complete(frame);
             return RLSMENU_DONE;
+        default:
+            return RLSMENU_CONT;
+    }
+}
+
+// Validity of the selection should be handled by caller
+static enum rlsmenu_result process_selection(rlsmenu_frame *frame, rlsmenu_cbs *cbs, void *selection) {
+    enum rlsmenu_cb_res res;
+    if (cbs && cbs->on_select)
+        res = cbs->on_select(frame, selection);
+    else
+        res = RLSMENU_CB_SUCCESS;
+
+    switch (res) {
+        case RLSMENU_CB_SUCCESS:
+            if (cbs && cbs->on_complete)
+                cbs->on_complete(frame);
+
+            return RLSMENU_DONE;
+        case RLSMENU_CB_FAILURE:
+            return RLSMENU_CONT;
+        case RLSMENU_CB_NEW_WIN:
+            frame->from_child_frame = true;
+            return RLSMENU_CONT;
+    }
+
+    return RLSMENU_CANCELED;
+}
+
+static enum rlsmenu_result process_child_return(rlsmenu_frame *frame, rlsmenu_cbs *cbs) {
+    frame->from_child_frame = false;
+    switch (frame->parent->last_return_code) {
+        case RLSMENU_DONE:
+            if (cbs && cbs->on_complete)
+                cbs->on_complete(frame);
+
+            return RLSMENU_DONE;
+        case RLSMENU_CANCELED:
+            return RLSMENU_CONT;
+        default:
+            abort(); // Consider an assert here
+    }
+}
+
+static enum rlsmenu_result update_rlsmenu_slist(rlsmenu_frame *frame, enum rlsmenu_input in) {
+    rlsmenu_slist *slist = (rlsmenu_slist *) frame;
+
+    if (frame->from_child_frame)
+        return process_child_return(frame, slist->s.cbs);
+
+    if (in >= 0 && (int) in < slist->s.n_items)
+        return process_selection(frame, slist->s.cbs, slist->s.items + in * slist->s.item_size);
+
+    switch (in) {
+        case RLSMENU_ESC:
+            return RLSMENU_CANCELED;
+        case RLSMENU_SEL:
+            if (slist->sel >= 0 && slist->sel < slist->s.n_items)
+                return process_selection(frame, slist->s.cbs,
+                        slist->s.items + slist->sel * slist->s.item_size);
+            return RLSMENU_CONT;
+        case RLSMENU_UP:
+            slist->sel = max(0, slist->sel-1);
+            frame->parent->should_rebuild_menu_str = true;
+            return RLSMENU_CONT;
+        case RLSMENU_DN:
+            slist->sel = min(slist->s.n_items-1, slist->sel+1);
+            frame->parent->should_rebuild_menu_str = true;
+            return RLSMENU_CONT;
         default:
             return RLSMENU_CONT;
     }
@@ -120,27 +199,40 @@ void rlsmenu_gui_push(rlsmenu_gui *gui, rlsmenu_frame *frame) {
 static rlsmenu_frame *init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame) {
     frame->parent = gui;
     gui->should_rebuild_menu_str = true;
+    frame->from_child_frame = false;
 
     return menu_init_handler_for[frame->type](frame);
 }
 
-// Copies and initializes the frame
-static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *frame) {
-    rlsmenu_list *list = malloc(sizeof(*list));
-    *list = *(rlsmenu_list *) frame;
-    frame = (rlsmenu_frame *) list;
+static void init_rlsmenu_list_shared(rlsmenu_list_shared *s) {
+    rlsmenu_frame *frame = (rlsmenu_frame *) s;
 
-    list->item_names = list->get_item_names(list->items, list->n_items, frame->state);
+    s->item_names = s->get_item_names(s->items, s->n_items, frame->state);
 
     int x_border = 0, y_border = 0;
     if (frame->flags & RLSMENU_BORDER)
         x_border = 4, y_border = 2;
 
     int title_len = frame->title ? wcslen(frame->title) : 0;
-    frame->w = max(longest_item_name(list->item_names, list->n_items) + MENU_IDX_WIDTH, title_len) + x_border;
-    frame->h = list->n_items + !!frame->title + y_border;
+    frame->w = max(longest_item_name(s->item_names, s->n_items) + MENU_IDX_WIDTH, title_len) + x_border;
+    frame->h = s->n_items + !!frame->title + y_border;
+}
 
-    return frame;
+static rlsmenu_frame *init_rlsmenu_list(rlsmenu_frame *frame) {
+    rlsmenu_list *list = malloc(sizeof(*list));
+    *list = *(rlsmenu_list *) frame;
+
+    init_rlsmenu_list_shared(&list->s);
+    return (rlsmenu_frame *) list;
+}
+
+static rlsmenu_frame *init_rlsmenu_slist(rlsmenu_frame *frame) {
+    rlsmenu_slist *slist = malloc(sizeof(*slist));
+    *slist = *(rlsmenu_slist *) frame;
+
+    init_rlsmenu_list_shared(&slist->s);
+    slist->sel = -1;
+    return (rlsmenu_frame *) slist;
 }
 
 static int longest_item_name(wchar_t **item_names, int n_items) {
@@ -193,8 +285,11 @@ static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *frame) {
         y_off++;
     }
 
-    for (int i = 0; i < list->n_items; i++) {
-        swprintf(str+x_off+(y_off+i)*frame->w, frame->w, L"(%lc) %ls", idx_to_alpha[i], list->item_names[i]);
+    for (int i = 0; i < list->s.n_items; i++) {
+        if (frame->type == RLSMENU_SLIST && ((rlsmenu_slist *) frame)->sel == i)
+            swprintf(str+x_off+(y_off+i)*frame->w, frame->w, L"(*) %ls", list->s.item_names[i]);
+        else
+            swprintf(str+x_off+(y_off+i)*frame->w, frame->w, L"(%lc) %ls", idx_to_alpha[i], list->s.item_names[i]);
     }
 
     // This is a hack to overwrite the null chars swprintf will insert
@@ -227,3 +322,16 @@ static void draw_border(wchar_t *str, int w, int h) {
 
 }
 
+void rlsmenu_push_return(rlsmenu_gui *gui, void *data) {
+    push(&gui->return_stack, data);
+}
+
+void *rlsmenu_pop_return(rlsmenu_gui *gui) {
+    node *tmp = pop(&gui->return_stack);
+
+    if (!tmp) return NULL;
+    void *data = tmp->data;
+    free(tmp);
+
+    return data;
+}
