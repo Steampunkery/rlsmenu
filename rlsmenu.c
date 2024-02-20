@@ -81,6 +81,7 @@ static node *pop(node **head) {
 
 enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
     rlsmenu_frame *frame = gui->frame_stack->data;
+    if (in == RLSMENU_INVALID_KEY) return RLSMENU_CONT;
 
     enum rlsmenu_result res = update_handler_for[frame->type](frame, in);
     if (res == RLSMENU_DONE || res == RLSMENU_CANCELED) {

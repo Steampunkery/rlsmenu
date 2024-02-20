@@ -10,6 +10,7 @@ enum rlsmenu_result { RLSMENU_DONE, RLSMENU_CANCELED, RLSMENU_CONT };
 
 // 0-51 are reserved for inputs a - Z
 enum rlsmenu_input {
+    RLSMENU_INVALID_KEY = -1,
     RLSMENU_ESC = 52,
     RLSMENU_PGUP,
     RLSMENU_PGDN,
