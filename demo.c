@@ -13,14 +13,6 @@
 #define PGUP  0x2a
 #define PGDN  0x2f
 
-wchar_t **f_item_names(void *items, int n_items, void *state) {
-    (void) items;
-    (void) n_items;
-    (void) state;
-    static wchar_t *names[] = {L"One", L"Two", L"Three"};
-    return names;
-}
-
 int translate_input(char c) {
     if (c >= 'a' && c <= 'z') return c - 'a';
     else if (c >= 'A' && c <= 'Z') return c - 'A';
@@ -55,6 +47,7 @@ enum rlsmenu_cb_res on_select(rlsmenu_frame *frame, void *selection) {
 }
 
 char *items[] = { "a", "b", "c" };
+wchar_t *item_names[] = { L"One", L"Two", L"Three" };
 rlsmenu_slist list_tmp = {
     .s = {
         .frame = {
@@ -68,7 +61,7 @@ rlsmenu_slist list_tmp = {
         .item_size = sizeof(char *),
         .n_items = 3,
 
-        .get_item_names = f_item_names,
+        .item_names = item_names,
     },
 };
 

@@ -207,8 +207,6 @@ static rlsmenu_frame *init_frame(rlsmenu_gui *gui, rlsmenu_frame *frame) {
 static void init_rlsmenu_list_shared(rlsmenu_list_shared *s) {
     rlsmenu_frame *frame = (rlsmenu_frame *) s;
 
-    s->item_names = s->get_item_names(s->items, s->n_items, frame->state);
-
     int x_border = 0, y_border = 0;
     if (frame->flags & RLSMENU_BORDER)
         x_border = 4, y_border = 2;

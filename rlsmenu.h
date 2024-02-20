@@ -57,12 +57,11 @@ typedef struct rlsmenu_cbs {
 typedef struct rlsmenu_list_shared {
     rlsmenu_frame frame;
     rlsmenu_cbs *cbs;
+
     void *items;
     size_t item_size;
     int n_items;
-
-    wchar_t **item_names; // Filled in by get_item_names
-    wchar_t **(*get_item_names)(void *items, int n_items, void *state);
+    wchar_t **item_names;
 } rlsmenu_list_shared;
 
 typedef struct rlsmenu_list {
