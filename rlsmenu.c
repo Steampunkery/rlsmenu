@@ -273,7 +273,7 @@ static void rebuild_menu_str(rlsmenu_gui *gui) {
  */
 static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *frame) {
     rlsmenu_list *list = (rlsmenu_list *) frame;
-    wchar_t *str = calloc(1, sizeof(*str) * frame->w * frame->h);
+    wchar_t *str = calloc(1, sizeof(*str) * (frame->w * frame->h + 1));
 
     int x_off = 0, y_off = 0;
     if (frame->flags & RLSMENU_BORDER)
