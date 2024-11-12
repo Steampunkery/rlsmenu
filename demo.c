@@ -8,28 +8,35 @@
 
 #define ENTER 0xa
 #define ESC   0x1b
-#define UP    0x2d
-#define DN    0x2b
-#define PGUP  0x2a
-#define PGDN  0x2f
+#define UP    0x41
+#define DN    0x42
+#define PGUP  0x35
+#define PGDN  0x36
 
 int translate_input(char c) {
-    if (c >= 'a' && c <= 'z') return c - 'a';
+    if (c != 'q' && c >= 'a' && c <= 'z') return c - 'a';
     else if (c >= 'A' && c <= 'Z') return c - 'A';
 
+    int ch;
     switch (c) {
         case ENTER:
             return RLSMENU_SEL;
-        case ESC:
+        case 'q':
             return RLSMENU_ESC;
-        case UP:
-            return RLSMENU_UP;
-        case DN:
-            return RLSMENU_DN;
-        case PGUP:
-            return RLSMENU_PGUP;
-        case PGDN:
-            return RLSMENU_PGDN;
+        case ESC:
+            getchar(); // Skip [
+            if ((ch = getchar()) == -1) return RLSMENU_ESC;
+            switch (ch) {
+                case UP:
+                    return RLSMENU_UP;
+                case DN:
+                    return RLSMENU_DN;
+                case PGUP:
+                    return RLSMENU_PGUP;
+                case PGDN:
+                    return RLSMENU_PGDN;
+            }
+            return RLSMENU_ESC;
         default:
             return -1;
     }
@@ -56,7 +63,7 @@ rlsmenu_slist list_tmp = {
             .title = L"Test",
             .state = NULL,
         },
-        .cbs = &(rlsmenu_cbs) { on_select, on_complete },
+        .cbs = &(rlsmenu_cbs) { on_select, on_complete, NULL },
         .items = items,
         .item_size = sizeof(char *),
         .n_items = 3,
