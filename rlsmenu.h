@@ -80,6 +80,7 @@ typedef struct rlsmenu_str {
     int w;
     int h;
     wchar_t *str;
+    bool has_changed;
 } rlsmenu_str;
 
 // Provides input to a GUI object and updates the state correspondingly

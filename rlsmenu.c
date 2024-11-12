@@ -280,6 +280,7 @@ rlsmenu_str rlsmenu_get_menu_str(rlsmenu_gui *gui) {
     if (!gui->frame_stack)
         return (rlsmenu_str) { .str = NULL };
 
+    bool has_changed = gui->should_rebuild_menu_str;
     if (gui->should_rebuild_menu_str)
         rebuild_menu_str(gui);
 
@@ -287,7 +288,8 @@ rlsmenu_str rlsmenu_get_menu_str(rlsmenu_gui *gui) {
     return (rlsmenu_str) {
         .w = frame->w,
         .h = frame->h,
-        .str = gui->top_menu
+        .str = gui->top_menu,
+        .has_changed = has_changed,
     };
 }
 
