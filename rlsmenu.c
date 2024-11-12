@@ -34,6 +34,8 @@ static wchar_t *rebuild_rlsmenu_list(rlsmenu_frame *);
 static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in);
 static enum rlsmenu_result update_rlsmenu_slist(rlsmenu_frame *frame, enum rlsmenu_input in);
 
+static rlsmenu_cleanup_cb cleanup_rlsmenu_list(rlsmenu_frame *frame);
+
 static int longest_item_name(wchar_t **item_names, int n_items);
 static void draw_border(wchar_t *, int w, int h);
 
@@ -50,6 +52,11 @@ wchar_t *(*rebuild_handler_for[])(rlsmenu_frame *) = {
 enum rlsmenu_result (*update_handler_for[])(rlsmenu_frame *, enum rlsmenu_input) = {
     [RLSMENU_LIST] = update_rlsmenu_list,
     [RLSMENU_SLIST] = update_rlsmenu_slist,
+};
+
+rlsmenu_cleanup_cb (*cleanup_handler_for[])(rlsmenu_frame *) = {
+    [RLSMENU_LIST] = cleanup_rlsmenu_list,
+    [RLSMENU_SLIST] = cleanup_rlsmenu_list,
 };
 
 static wchar_t *idx_to_alpha = L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -79,6 +86,27 @@ static node *pop(node **head) {
     return tmp;
 }
 
+static void clear(node *head, bool deep) {
+    node *i, *tmp = i = head;
+    while (i) {
+        i = i->next;
+        if (deep) {
+            rlsmenu_frame *frame = tmp->data;
+            rlsmenu_cleanup_cb f = cleanup_handler_for[frame->type](frame);
+            if (f) f(frame);
+
+            free(tmp->data);
+        }
+
+        free(tmp);
+        tmp = i;
+    }
+}
+
+static rlsmenu_cleanup_cb cleanup_rlsmenu_list(rlsmenu_frame *frame) {
+    return ((rlsmenu_list_shared *) frame)->cbs->cleanup;
+}
+
 enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
     rlsmenu_frame *frame = gui->frame_stack->data;
     if (in == RLSMENU_INVALID_KEY) return RLSMENU_CONT;
@@ -97,12 +125,13 @@ enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
 }
 
 static enum rlsmenu_result update_rlsmenu_list(rlsmenu_frame *frame, enum rlsmenu_input in) {
-    rlsmenu_list *list = (rlsmenu_list *) frame;
+    rlsmenu_cbs *cbs = ((rlsmenu_list *) frame)->s.cbs;
 
     switch (in) {
         case RLSMENU_ESC:
         case RLSMENU_SEL:
-            if (list->s.cbs && list->s.cbs->on_complete) list->s.cbs->on_complete(frame);
+            if (cbs && cbs->on_complete) cbs->on_complete(frame);
+            if (cbs && cbs->cleanup) cbs->cleanup(frame);
             return RLSMENU_DONE;
         default:
             return RLSMENU_CONT;
@@ -119,8 +148,8 @@ static enum rlsmenu_result process_selection(rlsmenu_frame *frame, rlsmenu_cbs *
 
     switch (res) {
         case RLSMENU_CB_SUCCESS:
-            if (cbs && cbs->on_complete)
-                cbs->on_complete(frame);
+            if (cbs && cbs->on_complete) cbs->on_complete(frame);
+            if (cbs && cbs->cleanup) cbs->cleanup(frame);
 
             return RLSMENU_DONE;
         case RLSMENU_CB_FAILURE:
@@ -185,7 +214,10 @@ void rlsmenu_gui_init(rlsmenu_gui *gui) {
     gui->should_rebuild_menu_str = false;
 }
 
+// Note: This will leak any allocated memory in the return stack
 void rlsmenu_gui_deinit(rlsmenu_gui *gui) {
+    clear(gui->frame_stack, true);
+    clear(gui->return_stack, false);
     free(gui->top_menu);
 }
 

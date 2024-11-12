@@ -49,9 +49,11 @@ typedef struct rlsmenu_frame {
 // TODO: See if this enum is really necessary in the future. It's in the
 // spec but might be redundant
 enum rlsmenu_cb_res { RLSMENU_CB_FAILURE, RLSMENU_CB_SUCCESS, RLSMENU_CB_NEW_WIN };
+typedef void (*rlsmenu_cleanup_cb)(rlsmenu_frame *);
 typedef struct rlsmenu_cbs {
     enum rlsmenu_cb_res (*on_select)(rlsmenu_frame *frame, void *selection);
     void (*on_complete)(rlsmenu_frame *frame);
+    rlsmenu_cleanup_cb cleanup;
 } rlsmenu_cbs;
 
 // The shared fields of lists. All members are public.
