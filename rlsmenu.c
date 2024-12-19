@@ -266,7 +266,7 @@ static rlsmenu_frame *init_rlsmenu_msgbox(rlsmenu_frame *frame) {
     *m = *(rlsmenu_msgbox *) frame;
     frame = &m->frame;
 
-    int x_border = 0, y_border = 0;
+    int x_border = 0, y_border = 1;
     if (frame->flags & RLSMENU_BORDER)
         x_border = 4, y_border = 2;
 
@@ -358,9 +358,9 @@ static wchar_t *rebuild_rlsmenu_msgbox(rlsmenu_frame *frame) {
     rlsmenu_msgbox *m = (rlsmenu_msgbox *) frame;
     wchar_t *str = alloc_frame_str(frame);
 
-    int x_off = 0, y_off = 0;
+    int x_off = 0, y_off = 1;
     if (frame->flags & RLSMENU_BORDER)
-        x_off+=2, y_off++;
+        x_off+=2;
 
     for (int i = 0; i < m->n_lines; i++)
         *wcpcpy(str+x_off+(y_off+i)*frame->w, m->lines[i]) = L' ';
@@ -369,7 +369,7 @@ static wchar_t *rebuild_rlsmenu_msgbox(rlsmenu_frame *frame) {
         draw_border(str, frame->w, frame->h);
 
     if (frame->title)
-        *wcpcpy(str+2, frame->title) = L' ';
+        *wcpcpy(str+x_off, frame->title) = L' ';
 
     return str;
 }
