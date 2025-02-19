@@ -107,6 +107,7 @@ enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
 
     enum rlsmenu_result res = update_handler_for[frame->type](frame, in);
     if (res == RLSMENU_DONE || res == RLSMENU_CANCELED) {
+        if (frame->cbs && frame->cbs->cleanup) frame->cbs->cleanup(frame);
         // Client has to handle return stack
         node *n = pop(&gui->frame_stack);
         free(n->data);
@@ -125,7 +126,6 @@ static enum rlsmenu_result update_rlsmenu_null(rlsmenu_frame *frame, enum rlsmen
         case RLSMENU_ESC:
         case RLSMENU_SEL:
             if (cbs && cbs->on_complete) cbs->on_complete(frame);
-            if (cbs && cbs->cleanup) cbs->cleanup(frame);
             return RLSMENU_DONE;
         default:
             return RLSMENU_CONT;
@@ -145,7 +145,6 @@ static enum rlsmenu_result process_selection(rlsmenu_frame *frame, void *selecti
     switch (res) {
         case RLSMENU_CB_SUCCESS:
             if (cbs && cbs->on_complete) cbs->on_complete(frame);
-            if (cbs && cbs->cleanup) cbs->cleanup(frame);
 
             return RLSMENU_DONE;
         case RLSMENU_CB_FAILURE:
