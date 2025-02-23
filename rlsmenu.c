@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -106,27 +107,28 @@ enum rlsmenu_result rlsmenu_update(rlsmenu_gui *gui, enum rlsmenu_input in) {
     if (in == RLSMENU_INVALID_KEY) return RLSMENU_CONT;
 
     enum rlsmenu_result res = update_handler_for[frame->type](frame, in);
-    if (res == RLSMENU_DONE || res == RLSMENU_CANCELED) {
-        if (frame->cbs && frame->cbs->cleanup) frame->cbs->cleanup(frame);
-        // Client has to handle return stack
-        node *n = pop(&gui->frame_stack);
-        free(n->data);
-        free(n);
-        gui->should_rebuild_menu_str = true;
-        gui->last_return_code = res;
+    switch(res) {
+        case RLSMENU_DONE:
+            if (frame->cbs && frame->cbs->on_complete) frame->cbs->on_complete(frame);
+            /* FALLTHROUGH */
+        case RLSMENU_CANCELED:
+            if (frame->cbs && frame->cbs->cleanup) frame->cbs->cleanup(frame);
+            // Client has to handle return stack
+            node *n = pop(&gui->frame_stack);
+            free(n->data);
+            free(n);
+            gui->should_rebuild_menu_str = true;
+            gui->last_return_code = res;
+        default:
     }
 
     return res;
 }
 
-static enum rlsmenu_result update_rlsmenu_null(rlsmenu_frame *frame, enum rlsmenu_input in) {
-    rlsmenu_cbs *cbs = frame->cbs;
-
+static enum rlsmenu_result update_rlsmenu_null(rlsmenu_frame *, enum rlsmenu_input in) {
     switch (in) {
         case RLSMENU_ESC:
-        case RLSMENU_SEL:
-            if (cbs && cbs->on_complete) cbs->on_complete(frame);
-            return RLSMENU_DONE;
+            return RLSMENU_CANCELED;
         default:
             return RLSMENU_CONT;
     }
@@ -144,26 +146,21 @@ static enum rlsmenu_result process_selection(rlsmenu_frame *frame, void *selecti
 
     switch (res) {
         case RLSMENU_CB_SUCCESS:
-            if (cbs && cbs->on_complete) cbs->on_complete(frame);
-
             return RLSMENU_DONE;
         case RLSMENU_CB_FAILURE:
             return RLSMENU_CONT;
         case RLSMENU_CB_NEW_WIN:
             frame->from_child_frame = true;
             return RLSMENU_CONT;
+        default:
+            assert(!"Invalid callback return code!");
     }
-
-    return RLSMENU_CANCELED;
 }
 
 static enum rlsmenu_result process_child_return(rlsmenu_frame *frame) {
     frame->from_child_frame = false;
     switch (frame->parent->last_return_code) {
         case RLSMENU_DONE:
-            if (frame->cbs && frame->cbs->on_complete)
-                frame->cbs->on_complete(frame);
-
             return RLSMENU_DONE;
         case RLSMENU_CANCELED:
             return RLSMENU_CONT;
