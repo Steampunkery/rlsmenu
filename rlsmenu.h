@@ -65,7 +65,7 @@ typedef struct rlsmenu_list_shared {
     void *items;
     size_t item_size;
     int n_items;
-    wchar_t **item_names;
+    wchar_t const **item_names;
 } rlsmenu_list_shared;
 
 typedef struct rlsmenu_list {
@@ -80,7 +80,7 @@ typedef struct rlsmenu_slist {
 // All fields public
 typedef struct rlsmenu_msgbox {
     rlsmenu_frame frame;
-    wchar_t **lines;
+    wchar_t const **lines;
     int n_lines;
 } rlsmenu_msgbox;
 

@@ -37,7 +37,7 @@ static wchar_t *rebuild_rlsmenu_msgbox(rlsmenu_frame *);
 static enum rlsmenu_result update_rlsmenu_slist(rlsmenu_frame *frame, enum rlsmenu_input in);
 static enum rlsmenu_result update_rlsmenu_null(rlsmenu_frame *frame, enum rlsmenu_input in);
 
-static int longest_item_name(wchar_t **item_names, int n_items);
+static int longest_item_name(wchar_t const **item_names, int n_items);
 static void draw_border(wchar_t *, int w, int h);
 
 rlsmenu_frame *(*menu_init_handler_for[])(rlsmenu_frame *) = {
@@ -273,7 +273,7 @@ static rlsmenu_frame *init_rlsmenu_msgbox(rlsmenu_frame *frame) {
     return (rlsmenu_frame *) m;
 }
 
-static int longest_item_name(wchar_t **item_names, int n_items) {
+static int longest_item_name(wchar_t const **item_names, int n_items) {
     int max = 0, len;
     for (int i = 0; i < n_items; i++)
         if ((len = wcslen(item_names[i])) > max)
