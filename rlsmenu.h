@@ -48,7 +48,7 @@ typedef struct rlsmenu_frame {
     // Public fields
     enum rlsmenu_type type;
     int flags;
-    wchar_t *title;
+    wchar_t const *title;
     void *state; // Private data pointer to pass to callbacks
     rlsmenu_cbs *cbs;
 
